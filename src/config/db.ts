@@ -5,7 +5,8 @@ dotenv.config();
 
 export const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI!);
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/skillswap';
+    await mongoose.connect(mongoUri);
     console.log("✅ MongoDB connected");
   } catch (error) {
     console.error("❌ MongoDB connection failed", error);
