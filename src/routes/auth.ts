@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid";
 const router = express.Router();
 
 router.post("/google", async (req, res) => {
-  let { uid, name, email, photo } = req.body;
+  let { uid, name, email, photoURL } = req.body;
 
   try {
     // Check if user already exists by email
@@ -14,7 +14,7 @@ router.post("/google", async (req, res) => {
     // If not found, create a new user
     if (!user) {
       uid = uid || uuidv4(); // generate uid if not provided
-      user = new User({ uid, name, email, photo });
+      user = new User({ uid, name, email, photoURL });
       await user.save();
     }
 

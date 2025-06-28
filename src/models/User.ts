@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema(
     uid: { type: String, required: true, unique: true },
     name: String,
     email: { type: String, required: true, unique: true },
-    photo: String,
+    photoURL: String,
   },
   { timestamps: true }
 );
