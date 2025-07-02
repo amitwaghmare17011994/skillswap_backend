@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { connectDB } from './config/db';
 import userRoutes from './routes/user.routes';
 import skillRoutes from './routes/skill.routes';
+import connectionRoutes from './routes/connection.routes';
 
 // Load environment variables
 dotenv.config();
@@ -44,6 +45,7 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/users', userRoutes);
 app.use('/api/skills', skillRoutes);
+app.use('/api/connections', connectionRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -63,7 +65,16 @@ app.use('*', (req, res) => {
       'GET /api/skills',
       'GET /api/skills/:id',
       'PUT /api/skills/:id',
-      'DELETE /api/skills/:id'
+      'DELETE /api/skills/:id',
+      'POST /api/connections/send',
+      'GET /api/connections/pending',
+      'PUT /api/connections/:connectionId/accept',
+      'PUT /api/connections/:connectionId/reject',
+      'GET /api/connections/accepted',
+      'GET /api/connections/all',
+      'DELETE /api/connections/:connectionId/cancel',
+      'DELETE /api/connections/:connectionId/remove',
+      'GET /api/connections/status/:userId'
     ]
   });
 });

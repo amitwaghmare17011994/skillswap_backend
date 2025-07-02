@@ -10,7 +10,8 @@ export const createSkill = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Skill name is required' });
     }
 
-    const existingSkill = await Skill.findOne({ name: name.trim() });
+    // Case-insensitive duplicate check
+    const existingSkill = await Skill.findOne({ name: { $regex: `^${name.trim()}$`, $options: 'i' } });
     if (existingSkill) {
       return res.status(400).json({ error: 'Skill already exists' });
     }
@@ -53,6 +54,15 @@ export const updateSkill = async (req: Request, res: Response) => {
     const { name } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Skill name is required' });
+    }
+
+    // Case-insensitive duplicate check (excluding current skill)
+    const duplicate = await Skill.findOne({
+      _id: { $ne: req.params.id },
+      name: { $regex: `^${name.trim()}$`, $options: 'i' }
+    });
+    if (duplicate) {
+      return res.status(400).json({ error: 'Skill already exists' });
     }
 
     const skill = await Skill.findByIdAndUpdate(

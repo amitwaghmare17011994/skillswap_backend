@@ -1,6 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 import mongoose from 'mongoose';
+import jwt from 'jsonwebtoken';
 import userRoutes from '../routes/user.routes';
 import skillRoutes from '../routes/skill.routes';
 import { User } from '../models/User';
@@ -18,18 +19,42 @@ app.use('/api/skills', skillRoutes);
 process.env.JWT_SECRET = 'test-secret-key';
 process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
 
+// Helper function to generate test token
+const generateTestToken = (userId: string) => {
+  return jwt.sign(
+    { id: userId, email: 'test@example.com', name: 'Test User' },
+    process.env.JWT_SECRET!,
+    { expiresIn: '7d' }
+  );
+};
+
 describe('API Integration Tests', () => {
+  let testToken: string;
+  let testUserId: string;
+
   beforeEach(async () => {
-    // Clear database
-    await User.deleteMany({});
-    await Skill.deleteMany({});
+    // Create a test user and generate token
+    const hashedPassword = await require('bcryptjs').hash('password123', 10);
+    const testUser = await User.create({
+      name: 'Test User',
+      email: 'test@example.com',
+      password: hashedPassword,
+      oauthProvider: null,
+      skillsToTeach: [],
+      skillsToLearn: [],
+      points: 0,
+      hasReceivedFreePoints: false,
+    });
+    
+    testUserId = (testUser as any)._id.toString();
+    testToken = generateTestToken(testUserId);
   });
 
   describe('User API Endpoints', () => {
     it('should register a new user via API', async () => {
       const userData = {
-        name: 'Test User',
-        email: 'test@example.com',
+        name: 'New User',
+        email: 'newuser@example.com',
         password: 'password123',
       };
 
@@ -47,8 +72,8 @@ describe('API Integration Tests', () => {
     it('should login user via API', async () => {
       // First register a user
       const userData = {
-        name: 'Test User',
-        email: 'test@example.com',
+        name: 'Login User',
+        email: 'login@example.com',
         password: 'password123',
       };
 
@@ -58,7 +83,7 @@ describe('API Integration Tests', () => {
 
       // Then login
       const loginData = {
-        email: 'test@example.com',
+        email: 'login@example.com',
         password: 'password123',
       };
 
@@ -75,43 +100,51 @@ describe('API Integration Tests', () => {
     it('should get all users via API', async () => {
       // Create some users
       await User.create({
-        uid: 'user1@example.com',
         name: 'User 1',
         email: 'user1@example.com',
+        password: await require('bcryptjs').hash('password123', 10),
         oauthProvider: null,
+        skillsToTeach: [],
+        skillsToLearn: [],
         points: 500,
         hasReceivedFreePoints: true,
       });
 
       await User.create({
-        uid: 'user2@example.com',
         name: 'User 2',
         email: 'user2@example.com',
+        password: await require('bcryptjs').hash('password123', 10),
         oauthProvider: null,
+        skillsToTeach: [],
+        skillsToLearn: [],
         points: 500,
         hasReceivedFreePoints: true,
       });
 
       const response = await request(app)
         .get('/api/users')
+        .set('Authorization', `Bearer ${testToken}`)
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBe(2);
+      expect(response.body.length).toBe(3); // Including the test user
     });
 
     it('should get user by ID via API', async () => {
       const user = await User.create({
-        uid: 'user@example.com',
-        name: 'Test User',
-        email: 'user@example.com',
+        name: 'Get User',
+        email: 'getuser@example.com',
+        password: await require('bcryptjs').hash('password123', 10),
         oauthProvider: null,
+        skillsToTeach: [],
+        skillsToLearn: [],
         points: 500,
         hasReceivedFreePoints: true,
       }) as any;
 
       const response = await request(app)
         .get(`/api/users/${user._id}`)
+        .set('Authorization', `Bearer ${testToken}`)
         .expect(200);
 
       expect(response.body).toHaveProperty('_id', user._id.toString());
@@ -121,10 +154,12 @@ describe('API Integration Tests', () => {
 
     it('should update user via API', async () => {
       const user = await User.create({
-        uid: 'user@example.com',
-        name: 'Test User',
-        email: 'user@example.com',
+        name: 'Update User',
+        email: 'updateuser@example.com',
+        password: await require('bcryptjs').hash('password123', 10),
         oauthProvider: null,
+        skillsToTeach: [],
+        skillsToLearn: [],
         points: 500,
         hasReceivedFreePoints: true,
       });
@@ -136,6 +171,7 @@ describe('API Integration Tests', () => {
 
       const response = await request(app)
         .put(`/api/users/${user._id}`)
+        .set('Authorization', `Bearer ${testToken}`)
         .send(updateData)
         .expect(200);
 
@@ -147,17 +183,19 @@ describe('API Integration Tests', () => {
       const skill = await Skill.create({ name: 'JavaScript' });
       
       const user = await User.create({
-        uid: 'user@example.com',
-        name: 'Test User',
-        email: 'user@example.com',
+        name: 'Skill User',
+        email: 'skilluser@example.com',
+        password: await require('bcryptjs').hash('password123', 10),
         skillsToLearn: [skill._id],
         oauthProvider: null,
+        skillsToTeach: [],
         points: 500,
         hasReceivedFreePoints: true,
       });
 
       const response = await request(app)
         .get(`/api/users/search/by-skill?skillId=${skill._id}`)
+        .set('Authorization', `Bearer ${testToken}`)
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
@@ -174,6 +212,7 @@ describe('API Integration Tests', () => {
 
       const response = await request(app)
         .post('/api/skills')
+        .set('Authorization', `Bearer ${testToken}`)
         .send(skillData)
         .expect(201);
 
@@ -189,6 +228,7 @@ describe('API Integration Tests', () => {
 
       const response = await request(app)
         .get('/api/skills')
+        .set('Authorization', `Bearer ${testToken}`)
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
@@ -200,6 +240,7 @@ describe('API Integration Tests', () => {
 
       const response = await request(app)
         .get(`/api/skills/${skill._id}`)
+        .set('Authorization', `Bearer ${testToken}`)
         .expect(200);
 
       expect(response.body).toHaveProperty('_id', skill._id.toString());
@@ -215,6 +256,7 @@ describe('API Integration Tests', () => {
 
       const response = await request(app)
         .put(`/api/skills/${skill._id}`)
+        .set('Authorization', `Bearer ${testToken}`)
         .send(updateData)
         .expect(200);
 
@@ -226,6 +268,7 @@ describe('API Integration Tests', () => {
 
       const response = await request(app)
         .delete(`/api/skills/${skill._id}`)
+        .set('Authorization', `Bearer ${testToken}`)
         .expect(200);
 
       expect(response.body).toHaveProperty('message', 'Skill deleted');
@@ -240,6 +283,7 @@ describe('API Integration Tests', () => {
     it('should handle invalid user ID format', async () => {
       const response = await request(app)
         .get('/api/users/invalid-id')
+        .set('Authorization', `Bearer ${testToken}`)
         .expect(400);
 
       expect(response.body).toHaveProperty('error', 'Invalid user ID');
@@ -248,6 +292,7 @@ describe('API Integration Tests', () => {
     it('should handle invalid skill ID format', async () => {
       const response = await request(app)
         .get('/api/skills/invalid-id')
+        .set('Authorization', `Bearer ${testToken}`)
         .expect(500);
 
       expect(response.body).toHaveProperty('error');
@@ -256,6 +301,7 @@ describe('API Integration Tests', () => {
     it('should handle missing skillId parameter', async () => {
       const response = await request(app)
         .get('/api/users/search/by-skill')
+        .set('Authorization', `Bearer ${testToken}`)
         .expect(400);
 
       expect(response.body).toHaveProperty('error', 'skillId query parameter is required');
@@ -270,6 +316,7 @@ describe('API Integration Tests', () => {
 
       const response = await request(app)
         .post('/api/skills')
+        .set('Authorization', `Bearer ${testToken}`)
         .send(skillData)
         .expect(400);
 
@@ -283,6 +330,7 @@ describe('API Integration Tests', () => {
 
       const response = await request(app)
         .post('/api/skills')
+        .set('Authorization', `Bearer ${testToken}`)
         .send(skillData)
         .expect(400);
 
@@ -298,6 +346,7 @@ describe('API Integration Tests', () => {
 
       const response = await request(app)
         .post('/api/skills')
+        .set('Authorization', `Bearer ${testToken}`)
         .send(skillData)
         .expect(201);
 
@@ -311,6 +360,7 @@ describe('API Integration Tests', () => {
 
       const response = await request(app)
         .post('/api/skills')
+        .set('Authorization', `Bearer ${testToken}`)
         .send(skillData)
         .expect(201);
 
@@ -325,6 +375,7 @@ describe('API Integration Tests', () => {
 
       const response = await request(app)
         .post('/api/skills')
+        .set('Authorization', `Bearer ${testToken}`)
         .send(skillData)
         .expect(201);
 

@@ -2,39 +2,39 @@ import request from 'supertest';
 import express from 'express';
 import mongoose from 'mongoose';
 import { Skill } from '../models/Skill';
-import {
-  createSkill,
-  getAllSkills,
-  getSkillById,
-  updateSkill,
-  deleteSkill,
-} from '../controllers/skill.controller';
+import skillRoutes from '../routes/skill.routes';
+import { authenticateToken } from '../middleware/auth';
 
 // Create Express app for testing
 const app = express();
 app.use(express.json());
 
+// Mount skill routes
+app.use('/api/skills', skillRoutes);
+
+// Mock authentication middleware for testing
+jest.mock('../middleware/auth', () => ({
+  authenticateToken: (req: any, res: any, next: any) => next(),
+}));
+
 describe('Skill Controller', () => {
   let mockSkill: any;
 
   beforeEach(async () => {
-    // Clear database
-    await Skill.deleteMany({});
-
     // Create mock skill
     mockSkill = await Skill.create({
       name: 'JavaScript',
     });
   });
 
-  describe('POST /skills', () => {
+  describe('POST /api/skills', () => {
     it('should create a new skill successfully', async () => {
       const skillData = {
         name: 'Python',
       };
 
       const response = await request(app)
-        .post('/skills')
+        .post('/api/skills')
         .send(skillData)
         .expect(201);
 
@@ -50,7 +50,7 @@ describe('Skill Controller', () => {
       };
 
       const response = await request(app)
-        .post('/skills')
+        .post('/api/skills')
         .send(skillData)
         .expect(400);
 
@@ -63,7 +63,7 @@ describe('Skill Controller', () => {
       };
 
       const response = await request(app)
-        .post('/skills')
+        .post('/api/skills')
         .send(skillData)
         .expect(400);
 
@@ -74,7 +74,7 @@ describe('Skill Controller', () => {
       const skillData = {};
 
       const response = await request(app)
-        .post('/skills')
+        .post('/api/skills')
         .send(skillData)
         .expect(400);
 
@@ -87,7 +87,7 @@ describe('Skill Controller', () => {
       };
 
       const response = await request(app)
-        .post('/skills')
+        .post('/api/skills')
         .send(skillData)
         .expect(400);
 
@@ -100,7 +100,7 @@ describe('Skill Controller', () => {
       };
 
       const response = await request(app)
-        .post('/skills')
+        .post('/api/skills')
         .send(skillData)
         .expect(201);
 
@@ -116,7 +116,7 @@ describe('Skill Controller', () => {
       };
 
       const response = await request(app)
-        .post('/skills')
+        .post('/api/skills')
         .send(skillData)
         .expect(500);
 
@@ -124,7 +124,7 @@ describe('Skill Controller', () => {
     });
   });
 
-  describe('GET /skills', () => {
+  describe('GET /api/skills', () => {
     it('should get all skills sorted by name', async () => {
       // Create additional skills
       await Skill.create({ name: 'Python' });
@@ -132,7 +132,7 @@ describe('Skill Controller', () => {
       await Skill.create({ name: 'Angular' });
 
       const response = await request(app)
-        .get('/skills')
+        .get('/api/skills')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
@@ -147,7 +147,7 @@ describe('Skill Controller', () => {
       await Skill.deleteMany({});
 
       const response = await request(app)
-        .get('/skills')
+        .get('/api/skills')
         .expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
@@ -161,17 +161,17 @@ describe('Skill Controller', () => {
       });
 
       const response = await request(app)
-        .get('/skills')
+        .get('/api/skills')
         .expect(500);
 
       expect(response.body).toHaveProperty('error', 'Database error');
     });
   });
 
-  describe('GET /skills/:id', () => {
+  describe('GET /api/skills/:id', () => {
     it('should get skill by valid ID', async () => {
       const response = await request(app)
-        .get(`/skills/${mockSkill._id}`)
+        .get(`/api/skills/${mockSkill._id}`)
         .expect(200);
 
       expect(response.body).toHaveProperty('_id', mockSkill._id.toString());
@@ -180,7 +180,7 @@ describe('Skill Controller', () => {
 
     it('should return error for invalid skill ID', async () => {
       const response = await request(app)
-        .get('/skills/invalid-id')
+        .get('/api/skills/invalid-id')
         .expect(500);
 
       expect(response.body).toHaveProperty('error');
@@ -189,7 +189,7 @@ describe('Skill Controller', () => {
     it('should return error for non-existent skill', async () => {
       const fakeId = new mongoose.Types.ObjectId();
       const response = await request(app)
-        .get(`/skills/${fakeId}`)
+        .get(`/api/skills/${fakeId}`)
         .expect(404);
 
       expect(response.body).toHaveProperty('error', 'Skill not found');
@@ -202,21 +202,21 @@ describe('Skill Controller', () => {
       });
 
       const response = await request(app)
-        .get(`/skills/${mockSkill._id}`)
+        .get(`/api/skills/${mockSkill._id}`)
         .expect(500);
 
       expect(response.body).toHaveProperty('error', 'Database error');
     });
   });
 
-  describe('PUT /skills/:id', () => {
+  describe('PUT /api/skills/:id', () => {
     it('should update skill successfully', async () => {
       const updateData = {
         name: 'Updated JavaScript',
       };
 
       const response = await request(app)
-        .put(`/skills/${mockSkill._id}`)
+        .put(`/api/skills/${mockSkill._id}`)
         .send(updateData)
         .expect(200);
 
@@ -230,7 +230,7 @@ describe('Skill Controller', () => {
       };
 
       const response = await request(app)
-        .put(`/skills/${mockSkill._id}`)
+        .put(`/api/skills/${mockSkill._id}`)
         .send(updateData)
         .expect(400);
 
@@ -243,7 +243,7 @@ describe('Skill Controller', () => {
       };
 
       const response = await request(app)
-        .put(`/skills/${mockSkill._id}`)
+        .put(`/api/skills/${mockSkill._id}`)
         .send(updateData)
         .expect(400);
 
@@ -254,7 +254,7 @@ describe('Skill Controller', () => {
       const updateData = {};
 
       const response = await request(app)
-        .put(`/skills/${mockSkill._id}`)
+        .put(`/api/skills/${mockSkill._id}`)
         .send(updateData)
         .expect(400);
 
@@ -263,11 +263,11 @@ describe('Skill Controller', () => {
 
     it('should return error for invalid skill ID', async () => {
       const updateData = {
-        name: 'Updated Skill',
+        name: 'Updated Name',
       };
 
       const response = await request(app)
-        .put('/skills/invalid-id')
+        .put('/api/skills/invalid-id')
         .send(updateData)
         .expect(500);
 
@@ -277,11 +277,11 @@ describe('Skill Controller', () => {
     it('should return error for non-existent skill', async () => {
       const fakeId = new mongoose.Types.ObjectId();
       const updateData = {
-        name: 'Updated Skill',
+        name: 'Updated Name',
       };
 
       const response = await request(app)
-        .put(`/skills/${fakeId}`)
+        .put(`/api/skills/${fakeId}`)
         .send(updateData)
         .expect(404);
 
@@ -294,7 +294,7 @@ describe('Skill Controller', () => {
       };
 
       const response = await request(app)
-        .put(`/skills/${mockSkill._id}`)
+        .put(`/api/skills/${mockSkill._id}`)
         .send(updateData)
         .expect(200);
 
@@ -308,11 +308,11 @@ describe('Skill Controller', () => {
       });
 
       const updateData = {
-        name: 'Updated Skill',
+        name: 'Updated Name',
       };
 
       const response = await request(app)
-        .put(`/skills/${mockSkill._id}`)
+        .put(`/api/skills/${mockSkill._id}`)
         .send(updateData)
         .expect(500);
 
@@ -320,10 +320,10 @@ describe('Skill Controller', () => {
     });
   });
 
-  describe('DELETE /skills/:id', () => {
+  describe('DELETE /api/skills/:id', () => {
     it('should delete skill successfully', async () => {
       const response = await request(app)
-        .delete(`/skills/${mockSkill._id}`)
+        .delete(`/api/skills/${mockSkill._id}`)
         .expect(200);
 
       expect(response.body).toHaveProperty('message', 'Skill deleted');
@@ -335,7 +335,7 @@ describe('Skill Controller', () => {
 
     it('should return error for invalid skill ID', async () => {
       const response = await request(app)
-        .delete('/skills/invalid-id')
+        .delete('/api/skills/invalid-id')
         .expect(500);
 
       expect(response.body).toHaveProperty('error');
@@ -344,7 +344,7 @@ describe('Skill Controller', () => {
     it('should return error for non-existent skill', async () => {
       const fakeId = new mongoose.Types.ObjectId();
       const response = await request(app)
-        .delete(`/skills/${fakeId}`)
+        .delete(`/api/skills/${fakeId}`)
         .expect(404);
 
       expect(response.body).toHaveProperty('error', 'Skill not found');
@@ -357,7 +357,7 @@ describe('Skill Controller', () => {
       });
 
       const response = await request(app)
-        .delete(`/skills/${mockSkill._id}`)
+        .delete(`/api/skills/${mockSkill._id}`)
         .expect(500);
 
       expect(response.body).toHaveProperty('error', 'Database error');
@@ -366,13 +366,12 @@ describe('Skill Controller', () => {
 
   describe('Skill Name Validation', () => {
     it('should handle case-insensitive duplicate detection', async () => {
-      // Create skill with different case
       const skillData = {
         name: 'javascript',
       };
 
       const response = await request(app)
-        .post('/skills')
+        .post('/api/skills')
         .send(skillData)
         .expect(400);
 
@@ -385,7 +384,7 @@ describe('Skill Controller', () => {
       };
 
       const response = await request(app)
-        .post('/skills')
+        .post('/api/skills')
         .send(skillData)
         .expect(201);
 
@@ -399,7 +398,7 @@ describe('Skill Controller', () => {
       };
 
       const response = await request(app)
-        .post('/skills')
+        .post('/api/skills')
         .send(skillData)
         .expect(201);
 
@@ -409,25 +408,38 @@ describe('Skill Controller', () => {
 
   describe('Database Operations', () => {
     it('should maintain data integrity across operations', async () => {
-      // Create multiple skills
-      const skill1 = await Skill.create({ name: 'Skill 1' });
-      const skill2 = await Skill.create({ name: 'Skill 2' });
+      // Create a skill
+      const createResponse = await request(app)
+        .post('/api/skills')
+        .send({ name: 'Test Skill' })
+        .expect(201);
 
-      // Verify all skills exist
-      let allSkills = await Skill.find().sort({ name: 1 });
-      expect(allSkills.length).toBe(3); // Including mockSkill
+      const skillId = createResponse.body._id;
 
-      // Update one skill
-      await Skill.findByIdAndUpdate(skill1._id, { name: 'Updated Skill 1' });
+      // Update the skill
+      const updateResponse = await request(app)
+        .put(`/api/skills/${skillId}`)
+        .send({ name: 'Updated Test Skill' })
+        .expect(200);
 
-      // Delete another skill
-      await Skill.findByIdAndDelete(skill2._id);
+      expect(updateResponse.body.name).toBe('Updated Test Skill');
 
-      // Verify final state
-      allSkills = await Skill.find().sort({ name: 1 });
-      expect(allSkills.length).toBe(2);
-      expect(allSkills[0].name).toBe('JavaScript'); // mockSkill
-      expect(allSkills[1].name).toBe('Updated Skill 1');
+      // Get the skill
+      const getResponse = await request(app)
+        .get(`/api/skills/${skillId}`)
+        .expect(200);
+
+      expect(getResponse.body.name).toBe('Updated Test Skill');
+
+      // Delete the skill
+      await request(app)
+        .delete(`/api/skills/${skillId}`)
+        .expect(200);
+
+      // Verify it's deleted
+      await request(app)
+        .get(`/api/skills/${skillId}`)
+        .expect(404);
     });
   });
 }); 
