@@ -5,6 +5,9 @@ import { connectDB } from './config/db';
 import userRoutes from './routes/user.routes';
 import skillRoutes from './routes/skill.routes';
 import connectionRoutes from './routes/connection.routes';
+import http from 'http';
+import { Server as SocketIOServer } from 'socket.io';
+import { authenticateToken } from './middleware/auth';
 
 // Load environment variables
 dotenv.config();
@@ -46,6 +49,67 @@ app.get('/health', (req, res) => {
 app.use('/api/users', userRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/connections', connectionRoutes);
+
+// Create HTTP server and Socket.IO server
+const server = http.createServer(app);
+const io = new SocketIOServer(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
+
+// Map to track online users: userId -> socketId
+const onlineUsers = new Map<string, string>();
+
+io.on('connection', (socket) => {
+  // Listen for user identification
+  socket.on('identify', (userId: string) => {
+    onlineUsers.set(userId, socket.id);
+  });
+
+  // Listen for chat messages
+  socket.on('chat message', async (data) => {
+    // data: { senderId, recipientId, content }
+    const { senderId, recipientId, content } = data;
+    // Save to DB (reuse your Message model)
+    try {
+      const { Message } = await import('./models/Message');
+      const message = await Message.create({ sender: senderId, recipient: recipientId, content });
+      // Emit to recipient if online
+      const recipientSocketId = onlineUsers.get(recipientId);
+      if (recipientSocketId) {
+        io.to(recipientSocketId).emit('chat message', {
+          _id: message._id,
+          sender: senderId,
+          recipient: recipientId,
+          content,
+          createdAt: message.createdAt,
+        });
+      }
+      // Optionally, emit to sender for confirmation
+      socket.emit('chat message', {
+        _id: message._id,
+        sender: senderId,
+        recipient: recipientId,
+        content,
+        createdAt: message.createdAt,
+      });
+    } catch (err) {
+      socket.emit('error', { error: 'Failed to send message' });
+    }
+  });
+
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    for (const [userId, sockId] of onlineUsers.entries()) {
+      if (sockId === socket.id) {
+        onlineUsers.delete(userId);
+        break;
+      }
+    }
+  });
+});
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -126,25 +190,11 @@ app.use((err: any, req: Request, res: Response, next: NextFunction): void => {
 
 // Start server
 const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
-const startServer = async () => {
-  try {
-    // Connect to database
-    await connectDB();
-    console.log('✅ Database connected successfully');
-
-    // Start server
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/health`);
-      console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    });
-  } catch (error) {
-    console.error('❌ Failed to start server:', error);
-    process.exit(1);
-  }
-};
+export { io };
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err: any) => {
@@ -168,5 +218,3 @@ process.on('SIGINT', () => {
   console.log('SIGINT received, shutting down gracefully');
   process.exit(0);
 });
-
-startServer();

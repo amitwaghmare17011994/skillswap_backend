@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 
 import { OAuth2Client } from "google-auth-library";
 import { User } from "../models/User";
+import { Skill } from "../models/Skill";
 import axios from "axios";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -28,23 +29,44 @@ const generateToken = (user: any): string => {
   });
 };
 
+// Helper: Get or create a skill by name or return ObjectId if already valid
+async function getOrCreateSkill(skill: string) {
+  if (mongoose.Types.ObjectId.isValid(skill)) return skill;
+  let skillDoc = await Skill.findOne({ name: { $regex: `^${skill.trim()}$`, $options: 'i' } });
+  if (!skillDoc) {
+    skillDoc = await Skill.create({ name: skill.trim() });
+  }
+  return skillDoc._id;
+}
+
 // 1. Register
 export const register = async (req: Request, res: Response) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, skillsToTeach = [], skillsToLearn = [] } = req.body;
 
   try {
+    if (skillsToTeach && Array.isArray(skillsToTeach) && skillsToTeach.length === 0) {
+      return res.status(400).json({ error: 'At least one skill to teach is required.' });
+    }
+    if (skillsToLearn && Array.isArray(skillsToLearn) && skillsToLearn.length === 0) {
+      return res.status(400).json({ error: 'At least one skill to learn is required.' });
+    }
+
     const existing = await User.findOne({ email });
     if (existing) return res.status(400).json({ error: "User already exists" });
 
     const hashed = await bcrypt.hash(password, 10);
+
+    // Map skills to ObjectIds, creating if needed
+    const skillsToTeachIds = await Promise.all(skillsToTeach.map(getOrCreateSkill));
+    const skillsToLearnIds = await Promise.all(skillsToLearn.map(getOrCreateSkill));
 
     const user = await User.create({
       name,
       email,
       password: hashed,
       oauthProvider: null,
-      skillsToTeach: [],
-      skillsToLearn: [],
+      skillsToTeach: skillsToTeachIds,
+      skillsToLearn: skillsToLearnIds,
       points: 0,
       hasReceivedFreePoints: false,
     });
@@ -272,15 +294,21 @@ export const updateUser = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
-    const { name, email, photoURL, skillsToTeach, skillsToLearn, points } =
-      req.body;
+    const { name, email, photoURL, skillsToTeach, skillsToLearn, points } = req.body;
+
+    if (skillsToTeach && Array.isArray(skillsToTeach) && skillsToTeach.length === 0) {
+      return res.status(400).json({ error: 'At least one skill to teach is required.' });
+    }
+    if (skillsToLearn && Array.isArray(skillsToLearn) && skillsToLearn.length === 0) {
+      return res.status(400).json({ error: 'At least one skill to learn is required.' });
+    }
 
     const updateData: any = {};
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (photoURL) updateData.photoURL = photoURL;
-    if (skillsToTeach) updateData.skillsToTeach = skillsToTeach;
-    if (skillsToLearn) updateData.skillsToLearn = skillsToLearn;
+    if (skillsToTeach) updateData.skillsToTeach = await Promise.all(skillsToTeach.map(getOrCreateSkill));
+    if (skillsToLearn) updateData.skillsToLearn = await Promise.all(skillsToLearn.map(getOrCreateSkill));
     if (points !== undefined) updateData.points = points;
 
     const user = await User.findByIdAndUpdate(req.params.id, updateData, {
@@ -336,16 +364,15 @@ export const searchUsersByLearningSkill = async (
 // 10. Add Skill to Teach
 export const addSkillToTeach = async (req: Request, res: Response) => {
   try {
-    const { skillId } = req.body;
+    let { skillId } = req.body;
     const userId = req.params.id;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(skillId)) {
-      return res.status(400).json({ error: "Invalid skill ID" });
-    }
+    // If skillId is a name, create if needed
+    skillId = await getOrCreateSkill(skillId);
 
     const user = await User.findByIdAndUpdate(
       userId,
@@ -369,16 +396,15 @@ export const addSkillToTeach = async (req: Request, res: Response) => {
 // 11. Add Skill to Learn
 export const addSkillToLearn = async (req: Request, res: Response) => {
   try {
-    const { skillId } = req.body;
+    let { skillId } = req.body;
     const userId = req.params.id;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
-    if (!mongoose.Types.ObjectId.isValid(skillId)) {
-      return res.status(400).json({ error: "Invalid skill ID" });
-    }
+    // If skillId is a name, create if needed
+    skillId = await getOrCreateSkill(skillId);
 
     const user = await User.findByIdAndUpdate(
       userId,

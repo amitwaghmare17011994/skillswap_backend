@@ -365,6 +365,45 @@
           ]
         }
       ]
+    },
+    {
+      "name": "💬 Chat",
+      "description": "Chat endpoints for user-to-user messaging.\n\nFor real-time chat, connect to ws://localhost:3000 using Socket.IO.\n\nSocket.IO Events:\n- identify: Send your userId after connecting.\n- chat message: Send { senderId, recipientId, content } to send a message.\n- chat message: Listen for incoming messages.\n\nExample (Socket.IO client):\n\n// Connect\nconst socket = io('ws://localhost:3000');\n// Identify\nsocket.emit('identify', userId);\n// Send message\nsocket.emit('chat message', { senderId, recipientId, content });\n// Listen for messages\nsocket.on('chat message', (msg) => { console.log(msg); });\n",
+      "item": [
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientId\": \"{{user_id}}\",\n  \"content\": \"Hello!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/chat/send",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "send"]
+            }
+          }
+        },
+        {
+          "name": "Get Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{jwt_token}}" }
+            ],
+            "url": {
+              "raw": "{{base_url}}/chat/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["chat", "{{user_id}}"]
+            }
+          }
+        }
+      ]
     }
   ]
 } 

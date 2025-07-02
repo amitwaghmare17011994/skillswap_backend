@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 import userRoutes from '../routes/user.routes';
 import skillRoutes from '../routes/skill.routes';
+import chatRoutes from '../routes/chat.routes';
 import { User } from '../models/User';
 import { Skill } from '../models/Skill';
 
@@ -14,6 +15,7 @@ app.use(express.json());
 // Mount routes
 app.use('/api/users', userRoutes);
 app.use('/api/skills', skillRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Mock environment variables
 process.env.JWT_SECRET = 'test-secret-key';
@@ -276,6 +278,65 @@ describe('API Integration Tests', () => {
       // Verify skill is actually deleted
       const deletedSkill = await Skill.findById(skill._id);
       expect(deletedSkill).toBeNull();
+    });
+  });
+
+  describe('Chat API Endpoints', () => {
+    let otherUserId: string;
+    let otherUserToken: string;
+
+    beforeEach(async () => {
+      // Create another user to chat with
+      const hashedPassword = await require('bcryptjs').hash('password123', 10);
+      const otherUser = await User.create({
+        name: 'Other User',
+        email: 'otheruser@example.com',
+        password: hashedPassword,
+        oauthProvider: null,
+        skillsToTeach: [],
+        skillsToLearn: [],
+        points: 0,
+        hasReceivedFreePoints: false,
+      });
+      otherUserId = (otherUser as any)._id.toString();
+      otherUserToken = generateTestToken(otherUserId);
+    });
+
+    it('should send a message via API', async () => {
+      const messageData = {
+        recipientId: otherUserId,
+        content: 'Hello, this is a test message!'
+      };
+
+      const response = await request(app)
+        .post('/api/chat/send')
+        .set('Authorization', `Bearer ${testToken}`)
+        .send(messageData)
+        .expect(201);
+
+      expect(response.body).toHaveProperty('_id');
+      expect(response.body).toHaveProperty('sender', testUserId);
+      expect(response.body).toHaveProperty('recipient', otherUserId);
+      expect(response.body).toHaveProperty('content', messageData.content);
+    });
+
+    it('should get messages between two users via API', async () => {
+      // Send a message first
+      await request(app)
+        .post('/api/chat/send')
+        .set('Authorization', `Bearer ${testToken}`)
+        .send({ recipientId: otherUserId, content: 'Hello, this is a test message!' });
+
+      const response = await request(app)
+        .get(`/api/chat/${otherUserId}`)
+        .set('Authorization', `Bearer ${testToken}`)
+        .expect(200);
+
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBeGreaterThan(0);
+      expect(response.body[0]).toHaveProperty('sender');
+      expect(response.body[0]).toHaveProperty('recipient');
+      expect(response.body[0]).toHaveProperty('content');
     });
   });
 
