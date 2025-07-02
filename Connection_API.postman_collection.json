@@ -34,6 +34,11 @@
       "key": "connection_id",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "skill_id",
+      "value": "",
+      "type": "string"
     }
   ],
   "item": [
@@ -239,6 +244,30 @@
               "path": ["connections", "status", "{{user_id}}"]
             }
           }
+        },
+        {
+          "name": "Search Users by Skill to Teach",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{jwt_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users/search/by-skill?skillId={{skill_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["users", "search", "by-skill"],
+              "query": [
+                {
+                  "key": "skillId",
+                  "value": "{{skill_id}}"
+                }
+              ]
+            }
+          },
+          "description": "Find users who can teach a given skill (by skillId)."
         }
       ]
     },

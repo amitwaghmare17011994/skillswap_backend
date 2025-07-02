@@ -188,9 +188,9 @@ describe('API Integration Tests', () => {
         name: 'Skill User',
         email: 'skilluser@example.com',
         password: await require('bcryptjs').hash('password123', 10),
-        skillsToLearn: [skill._id],
+        skillsToTeach: [skill._id],
         oauthProvider: null,
-        skillsToTeach: [],
+        skillsToLearn: [],
         points: 500,
         hasReceivedFreePoints: true,
       });

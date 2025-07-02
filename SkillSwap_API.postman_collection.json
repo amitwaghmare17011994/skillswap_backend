@@ -188,7 +188,7 @@
           }
         },
         {
-          "name": "Search Users by Skill",
+          "name": "Search Users by Skill to Teach",
           "request": {
             "method": "GET",
             "header": [
@@ -208,7 +208,8 @@
                 }
               ]
             }
-          }
+          },
+          "description": "Find users who can teach a given skill (by skillId)."
         },
         {
           "name": "Add Skill to Teach",

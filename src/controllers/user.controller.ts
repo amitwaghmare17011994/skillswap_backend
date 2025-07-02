@@ -329,8 +329,8 @@ export const updateUser = async (req: Request, res: Response) => {
   }
 };
 
-// 9. Search Users By Learning Skill
-export const searchUsersByLearningSkill = async (
+// 9. Search Users By Teaching Skill
+export const searchUsersByTeachingSkill = async (
   req: Request,
   res: Response
 ) => {
@@ -348,7 +348,7 @@ export const searchUsersByLearningSkill = async (
     }
 
     const users = await User.find({
-      skillsToLearn: skillId,
+      skillsToTeach: skillId,
     })
       .populate("skillsToTeach")
       .populate("skillsToLearn")

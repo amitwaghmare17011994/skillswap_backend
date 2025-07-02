@@ -287,13 +287,13 @@ describe('User Controller', () => {
   });
 
   describe('GET /api/users/search/by-skill', () => {
-    it('should search users by skill ID', async () => {
+    it('should search users by skill to teach ID', async () => {
       const { Skill } = require('../models/Skill');
       const skill = await Skill.create({ name: 'JavaScript' });
 
-      // Update mockUser to learn this skill
+      // Update mockUser to teach this skill
       await User.findByIdAndUpdate(mockUser._id, {
-        skillsToLearn: [skill._id]
+        skillsToTeach: [skill._id]
       });
 
       const response = await request(app)

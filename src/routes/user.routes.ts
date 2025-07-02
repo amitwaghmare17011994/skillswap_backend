@@ -6,7 +6,7 @@ import {
   getAllUsers,
   getUserById,
   updateUser,
-  searchUsersByLearningSkill,
+  searchUsersByTeachingSkill,
   addSkillToTeach,
   addSkillToLearn,
   removeSkillFromTeach,
@@ -24,8 +24,8 @@ router.post('/google-login', googleLogin as RequestHandler);    // POST /api/use
 // 📄 Protected User CRUD routes (authentication required)
 router.get('/', authenticateToken, getAllUsers as RequestHandler);                 // GET /api/users
 
-// 🔍 Search users by skill to learn (MUST come before /:id routes)
-router.get('/search/by-skill', authenticateToken, searchUsersByLearningSkill as RequestHandler); // GET /api/users/search/by-skill?skillId=<id>
+// 🔍 Search users by skill to teach (MUST come before /:id routes)
+router.get('/search/by-skill', authenticateToken, searchUsersByTeachingSkill as RequestHandler); // GET /api/users/search/by-skill?skillId=<id>
 
 // 📄 Protected User CRUD routes with parameters (MUST come after specific routes)
 router.get('/:id', authenticateToken, getUserById as RequestHandler);              // GET /api/users/:id

@@ -58,17 +58,14 @@ const userSchema: Schema<IUser> = new mongoose.Schema(
     },
     skillsToTeach: [
       {
-        type: String,
-        // type: mongoose.Schema.Types.ObjectId,
-        // ref: 'Skill',
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Skill',
       },
     ],
     skillsToLearn: [
       {
-        type: String,
-
-        // type: mongoose.Schema.Types.ObjectId,
-        // ref: 'Skill',
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Skill',
       },
     ],
     points: {
